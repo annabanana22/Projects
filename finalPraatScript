@@ -1,0 +1,159 @@
+
+# We have to know our filepath, which we must write as a string (hence the
+# quotation marks) and assign to a variable. We will also create the variable
+# myReport$ (the $ sign simply indicates the variable is a string variable, not
+# numerical):
+
+filesPath$ = "/Users/Anna/Dropbox/2. ACADEMIA/2.3. CCiL Master/2nd semester CCiL/Empirical Linguistics [EL]/Assignment 2 - Praat/data_analised"
+myReport$ = "/Users/Anna/Dropbox/2. ACADEMIA/2.3. CCiL Master/2nd semester CCiL/Empirical Linguistics [EL]/Assignment 2 - Praat/data_analised" + "myFile.txt"
+
+
+# Since we are working on multiple files (because we're studying samples from
+# several people, not just our own sample), we are going to create a list of
+# strings in one go from the list of files we have downloaded (which are found in
+# the "Class_aaa" folder). It is important that this folder which we have
+# downloaded appears in our filepath above. To create this list of strings we use
+# a function and write "list", then we add our filepath variable, we add another
+# backspace, and finally the name of the files we want to use to make the list.
+# Since we only want the .wav files and not the .TextGrid ones, we add to the
+# function "*.wav". The asterisk works as a regular expression so that all
+# the different wav files with different names are selected:
+
+
+Create Strings as file list: "list", filesPath$ + "/" + "*.wav"
+numberOfFiles = Get number of strings
+
+# in order to create the file and write the first line:
+writeFileLine: myReport$, "File", tab$, "Duration", tab$, "Intensity", tab$, "Shimmer", tab$, "Jitter", tab$, "Mean Harmonics-Noise-To-Ratio", tab$, "F0 tone", tab$, "Fraction of locally unvoiced frames", tab$, "Degree of Voice Breaks", tab$, "Number of Voice Breaks", tab$, "Singer's formant slope"
+
+
+for index to numberOfFiles
+	select Strings list
+
+	# gets the name of the string number
+	file$ = Get string: index
+
+	#reads the sound I keep it in a variable because I want to be able to use it later
+	sound = Read from file: filesPath$ + "/" + file$
+
+	# now I want to read the textgrid, I need its name
+	base$ = file$ - ".wav"
+
+	textGrid = Read from file: filesPath$ + "/" + base$ +".TextGrid"
+	# I don't need this line of code because now I am storing the same information in base$
+	# name$ = selected$("TextGrid")
+
+	##
+	#	DURATION ANALYSIS
+	##
+	selectObject: textGrid
+
+	nIntervals = Get number of intervals: 1
+
+	myInterval = 2
+
+	for interval to nIntervals
+	label$ = Get label of interval: 1, interval
+	
+		if label$ = "a"
+			myInterval = interval
+		endif
+	
+	endfor
+
+	end= Get end time of interval: 1, myInterval
+	start = Get start time of interval: 1, myInterval
+	dur = end-start
+
+	##
+	#	INTENSITY ANALYSIS
+	##
+	selectObject: sound
+	intensity = To Intensity: 100, 0.0, "yes"
+
+	#Get mean intensity	
+	int = Get mean: start, end, "dB"
+
+	##
+	#	VOICE QUALITY ANALYSIS
+	
+	# Create a sound slice in order to get your voice report use:
+	selectObject: sound
+	miniSound = Extract part: start, end, "rectangular", 1, "no"
+
+
+	# create the necessary objects of that sound (pulses (cc) + pitch (cc))
+	# We obtain the info associated to "To Pitch (cc)" and to "To PointProcess"
+	# by selecting our miniSound object in our Objects List and selecting the 
+	# 'Analysing periodicity', where will find the options for pitch and point process.
+
+	selectObject: miniSound
+	miniPitch = To Pitch (cc): 0, 75, 15, "no", 0.03, 0.45, 0.01, 0.35, 0.14, 600
+
+	selectObject: miniSound
+	miniPulses = To PointProcess (periodic, cc): 75, 600
+	
+
+	# Then, we select our three new objects to obtain our voice reoport.
+	# Use the interface to Use Voice report and copy/paste the history.
+	# We copy the information associated to 'voice report' under the veriable
+	# 'voiceReport$'. We add the dolar bc this variable is text, not numerical.
+	
+	selectObject: miniSound, miniPitch, miniPulses
+	voiceReport$ = Voice report: 0, 0, 75, 600, 1.3, 1.6, 0.03, 0.45
+
+
+	# Extract the jitter, shimmer, noiseRatio variables:
+
+	# shimmer:
+
+	shimmer = extractNumber (voiceReport$, "Shimmer (apq5): ")
+	shimmer$ = fixed$ (shimmer, 3)
+
+	# "Jitter (ppq5): "
+
+	jitter = extractNumber (voiceReport$, "Jitter (ppq5): ")
+	jitter$ = fixed$ (jitter, 3)
+
+	#"Mean harmonics-to-noise ratio: "
+
+	meanHarmonicsToNoiseRatio = extractNumber (voiceReport$, "Mean harmonics-to-noise ratio: ")
+	meanHarmonicsToNoiseRatio$ = fixed$ (meanHarmonicsToNoiseRatio, 3)
+
+	# mean F0 to know your tone
+
+	meanPitch = extractNumber (voiceReport$, "Mean pitch: ")
+	meanPitch$ = fixed$ (meanPitch, 3)
+
+	
+	#"Fraction of locally unvoiced frames: "
+
+	fractionLocallyUnvoicedFrames = extractNumber (voiceReport$, "Fraction of locally unvoiced frames: ")
+	fractionLocallyUnvoicedFrames$ = fixed$ (fractionLocallyUnvoicedFrames, 3)
+
+
+	#"Degree of voice breaks: "
+
+	degreeVoiceBreaks = extractNumber (voiceReport$, "Degree of voice breaks: ")
+	degreeVoiceBreaks$ = fixed$ (degreeVoiceBreaks, 3)
+
+	#"Number of voice breaks: "
+
+	numberVoiceBreaks = extractNumber (voiceReport$, "Number of voice breaks: ")
+	numberVoiceBreaks$ = fixed$ (numberVoiceBreaks, 3)
+
+	# to see whether there's singer's formant:
+
+	selectObject: sound
+	ltas = To Ltas (pitch-corrected): 75, 1000, 6000, 100, 0.0001, 0.02, 1.3
+
+	selectObject: ltas
+	ltasResult= Get slope: 2000, 6000, 2000, 4000, "energy"
+
+	# add the variables you want to analyse to the line that writes de results
+
+
+	appendFileLine: myReport$, base$, tab$, dur, tab$, int, tab$, shimmer, tab$, jitter, tab$, meanHarmonicsToNoiseRatio, tab$, meanPitch, tab$, fractionLocallyUnvoicedFrames, tab$, degreeVoiceBreaks, tab$, numberVoiceBreaks, tab$, ltasResult
+
+	removeObject: sound, textGrid,intensity
+endfor
